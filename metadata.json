@@ -1,0 +1,6 @@
+{
+  "name": "KimYo 5V",
+  "description": "Advanced hacking terminal and educational AI assistant featuring custom modes and executive study layouts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
