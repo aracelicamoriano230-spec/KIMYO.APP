@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 data class UserEntity(
     @PrimaryKey val username: String,
     val mode: String, // "STUDY_EXECUTIVO", "ELITE_BLACKER", "NORMAL"
+    val passwordHash: String,
+    val isApproved: Boolean = false,
     val signupTime: Long = System.currentTimeMillis()
 )
 
@@ -57,6 +59,12 @@ interface UserDao {
     
     @Query("SELECT COUNT(*) FROM users")
     suspend fun getUserCount(): Int
+
+    @Query("UPDATE users SET isApproved = :approved WHERE username = :username")
+    suspend fun approveUser(username: String, approved: Boolean)
+
+    @Query("SELECT * FROM users ORDER BY signupTime DESC")
+    suspend fun getAllUsersList(): List<UserEntity>
 }
 
 @Dao
@@ -102,7 +110,7 @@ interface SupabaseConfigDao {
 
 @Database(
     entities = [UserEntity::class, ChatItemEntity::class, TerminalCommandEntity::class, SupabaseConfigEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

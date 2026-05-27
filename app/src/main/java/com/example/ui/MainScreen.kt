@@ -56,7 +56,7 @@ fun MainScreen(viewModel: MainViewModel) {
         } else {
             Crossfade(targetState = currentUser, label = "ScreenTransition") { user ->
                 if (user == null) {
-                    LoginView(onLogin = { name -> viewModel.loginOrRegisterUser(name) })
+                    LoginView(viewModel = viewModel)
                 } else {
                     AppHubView(viewModel = viewModel, user = user)
                 }
@@ -149,9 +149,23 @@ fun SplashScreenView() {
 
 // --- Login & Registration View ---
 @Composable
-fun LoginView(onLogin: (String) -> Unit) {
-    var nameInput by remember { mutableStateOf("") }
-    val isReady = nameInput.trim().isNotEmpty()
+fun LoginView(viewModel: MainViewModel) {
+    var isRegisterMode by remember { mutableStateOf(false) }
+    var usernameInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
+    var confirmPasswordInput by remember { mutableStateOf("") }
+    
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    var errorMessage by remember { mutableStateOf("") }
+    var successMessage by remember { mutableStateOf("") }
+
+    val isReady = if (isRegisterMode) {
+        usernameInput.trim().isNotEmpty() && passwordInput.isNotEmpty() && confirmPasswordInput.isNotEmpty()
+    } else {
+        usernameInput.trim().isNotEmpty() && passwordInput.isNotEmpty()
+    }
 
     var showAnonymousEye by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -184,7 +198,7 @@ fun LoginView(onLogin: (String) -> Unit) {
             // Animated hacker face graphic container
             Box(
                 modifier = Modifier
-                    .size(130.dp)
+                    .size(110.dp)
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.05f))
                     .border(1.dp, HackerGreen.copy(alpha = 0.3f), CircleShape),
@@ -195,43 +209,85 @@ fun LoginView(onLogin: (String) -> Unit) {
                         Image(
                             painter = painterResource(id = R.drawable.ic_anonymous_mask),
                             contentDescription = "Anonymous Mask Logo blinking",
-                            modifier = Modifier.size(75.dp),
+                            modifier = Modifier.size(65.dp),
                             colorFilter = ColorFilter.tint(HackerGreen)
                         )
                     } else {
                         Image(
                             painter = painterResource(id = R.drawable.ic_anonymous_mask),
                             contentDescription = "Anonymous Mask Logo standard",
-                            modifier = Modifier.size(75.dp),
+                            modifier = Modifier.size(65.dp),
                             colorFilter = ColorFilter.tint(Color.White)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "KIMYO 5V BETA v1",
+                text = "KIMYO 5V ENGINE",
                 color = Color.White,
-                fontSize = 26.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.Black,
                 fontFamily = FontFamily.Monospace,
                 textAlign = TextAlign.Center
             )
 
             Text(
-                text = "Advanced Hacking Terminal & Executive Study Suite",
+                text = "Secure Autonomous Network & Study Gateway",
                 color = Color.White.copy(alpha = 0.6f),
-                fontSize = 12.sp,
+                fontSize = 11.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp, bottom = 32.dp)
+                modifier = Modifier.padding(top = 4.dp, bottom = 24.dp)
             )
+
+            // Tabs for toggling Register / Login
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 20.dp)
+                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(8.dp))
+                    .padding(4.dp)
+            ) {
+                Button(
+                    onClick = { 
+                        isRegisterMode = false 
+                        errorMessage = ""
+                        successMessage = ""
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isRegisterMode) HackerGreen else Color.Transparent,
+                        contentColor = if (!isRegisterMode) Color.Black else Color.White
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(vertical = 10.dp)
+                ) {
+                    Text("INICIAR SESIÓN", fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                }
+                Button(
+                    onClick = { 
+                        isRegisterMode = true 
+                        errorMessage = ""
+                        successMessage = ""
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isRegisterMode) HackerGreen else Color.Transparent,
+                        contentColor = if (isRegisterMode) Color.Black else Color.White
+                    ),
+                    shape = RoundedCornerShape(6.dp),
+                    contentPadding = PaddingValues(vertical = 10.dp)
+                ) {
+                    Text("REGISTRARSE", fontWeight = FontWeight.Bold, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+                }
+            }
 
             // Input fields with hacker accent
             OutlinedTextField(
-                value = nameInput,
-                onValueChange = { nameInput = it },
+                value = usernameInput,
+                onValueChange = { usernameInput = it },
                 label = { Text("Nombre de Registro / Username", color = Color.White.copy(alpha = 0.6f)) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = HackerGreen,
@@ -245,49 +301,144 @@ fun LoginView(onLogin: (String) -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag("name_login_input"),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { if (isReady) onLogin(nameInput) })
+                singleLine = true
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = passwordInput,
+                onValueChange = { passwordInput = it },
+                label = { Text("Contraseña", color = Color.White.copy(alpha = 0.6f)) },
+                visualTransformation = if (passwordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = "Toggle password visibility",
+                            tint = Color.White.copy(alpha = 0.5f)
+                        )
+                    }
+                },
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = HackerGreen,
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                    focusedLabelColor = HackerGreen,
+                    cursorColor = HackerGreen,
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            if (isRegisterMode) {
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = confirmPasswordInput,
+                    onValueChange = { confirmPasswordInput = it },
+                    label = { Text("Confirmar Contraseña", color = Color.White.copy(alpha = 0.6f)) },
+                    visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            Icon(
+                                imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                contentDescription = "Toggle confirm password visibility",
+                                tint = Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = HackerGreen,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        focusedLabelColor = HackerGreen,
+                        cursorColor = HackerGreen,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Error Status and success feedback cards
+            if (errorMessage.isNotEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF421E1E)),
+                    border = BorderStroke(1.dp, Color(0xFFE57373)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                ) {
+                    Text(
+                        text = errorMessage,
+                        color = Color(0xFFFFCDD2),
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            if (successMessage.isNotEmpty()) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF1E3821)),
+                    border = BorderStroke(1.dp, HackerGreen),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+                ) {
+                    Text(
+                        text = successMessage,
+                        color = HackerGreen,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            // Credential hints for system operators
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.04f)),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "💡 Pistas de Credenciales:",
+                        text = "⚡ Perfiles Predeterminados de Administración:",
                         color = HackerGreen,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "• anghe / anshe - Administradora (Clave: potato) violeta, caballos & conejos.",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "• Inserta anshe / anghe: Entrada Administradora en Modo Estudio Ejecutivo (violeta, motivos de conejos/caballos, IA escolar experta).",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 11.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "• Inserta blacker: Entrada del Creador de élite (negro con toques oro de caballero respetable, terminal con acceso completo).",
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 11.sp
+                        text = "• blacker - Creador de élite / Dueño (Clave: benja30100) accesos raíz.",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Pulse animation on register/login button
             val infiniteTransition = rememberInfiniteTransition(label = "ButtonPulse")
             val pulseScale by infiniteTransition.animateFloat(
                 initialValue = 1f,
-                targetValue = 1.05f,
+                targetValue = 1.04f,
                 animationSpec = infiniteRepeatable(
                     animation = tween(1200, easing = FastOutSlowInEasing),
                     repeatMode = RepeatMode.Reverse
@@ -296,11 +447,37 @@ fun LoginView(onLogin: (String) -> Unit) {
             )
 
             Button(
-                onClick = { onLogin(nameInput) },
+                onClick = {
+                    errorMessage = ""
+                    successMessage = ""
+                    if (isRegisterMode) {
+                        if (passwordInput != confirmPasswordInput) {
+                            errorMessage = "Las contraseñas ingresadas no coinciden"
+                            return@Button
+                        }
+                        viewModel.registerNewUser(usernameInput, passwordInput) { ok, msg ->
+                            if (ok) {
+                                successMessage = msg
+                                usernameInput = ""
+                                passwordInput = ""
+                                confirmPasswordInput = ""
+                                isRegisterMode = false
+                            } else {
+                                errorMessage = msg
+                            }
+                        }
+                    } else {
+                        viewModel.authenticateUser(usernameInput, passwordInput) { ok, msg ->
+                            if (!ok) {
+                                errorMessage = msg
+                            }
+                        }
+                    }
+                },
                 enabled = isReady,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .height(52.dp)
                     .graphicsLayer {
                         if (isReady) {
                             scaleX = pulseScale
@@ -317,11 +494,11 @@ fun LoginView(onLogin: (String) -> Unit) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    text = "REGISTRARSE E INICIAR",
+                    text = if (isRegisterMode) "CREAR CUENTA SECURA" else "AUTENTICAR AL SISTEMA",
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Monospace,
                     letterSpacing = 1.sp,
-                    fontSize = 15.sp
+                    fontSize = 13.sp
                 )
             }
         }
@@ -980,6 +1157,80 @@ fun TerminalViewTab(viewModel: MainViewModel, user: UserEntity) {
                 Text("Scan OTG", fontSize = 10.sp, color = HackerGreen, fontFamily = FontFamily.Monospace)
             }
         }
+
+        if (user.mode == "ELITE_BLACKER") {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { inputCmd = "/admin-users" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B2236)),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("🔑 Admin Users", fontSize = 9.sp, color = Color(0xFFFFB74D), fontFamily = FontFamily.Monospace)
+                }
+
+                Button(
+                    onClick = { inputCmd = "/admin-logs" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B2236)),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("📜 Audit Logs", fontSize = 9.sp, color = Color(0xFFFFB74D), fontFamily = FontFamily.Monospace)
+                }
+
+                Button(
+                    onClick = { inputCmd = "/approve-user " },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B2236)),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("✅ Approve User", fontSize = 9.sp, color = Color(0xFFFFB74D), fontFamily = FontFamily.Monospace)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Button(
+                    onClick = { inputCmd = "/set-rank  usuario" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E1C1C)),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("👤 Rango Usuario", fontSize = 8.sp, color = Color(0xFFE57373), fontFamily = FontFamily.Monospace)
+                }
+
+                Button(
+                    onClick = { inputCmd = "/set-rank  administrador" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1C2C1E)),
+                    modifier = Modifier.weight(1.1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("⭐ Rango Admin", fontSize = 8.sp, color = Color(0xFF81C784), fontFamily = FontFamily.Monospace)
+                }
+
+                Button(
+                    onClick = { inputCmd = "/set-rank  omega" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C1C2C)),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(2.dp),
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text("👑 Rango Omega", fontSize = 8.sp, color = Color(0xFFBA68C8), fontFamily = FontFamily.Monospace)
+                }
+            }
+        }
     }
 }
 
@@ -1091,14 +1342,18 @@ fun SettingsViewTab(viewModel: MainViewModel, user: UserEntity) {
                     modifier = Modifier.padding(bottom = 14.dp)
                 )
 
+                val isOmega = user.mode == "ELITE_BLACKER"
+
                 OutlinedTextField(
                     value = customSupaUrl,
-                    onValueChange = { customSupaUrl = it },
+                    onValueChange = { if (isOmega) customSupaUrl = it },
                     label = { Text("Supabase URL", fontSize = 12.sp) },
                     singleLine = true,
+                    enabled = isOmega,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1108,12 +1363,14 @@ fun SettingsViewTab(viewModel: MainViewModel, user: UserEntity) {
 
                 OutlinedTextField(
                     value = customSupaKey,
-                    onValueChange = { customSupaKey = it },
+                    onValueChange = { if (isOmega) customSupaKey = it },
                     label = { Text("Supabase Service-Role / Anon Key", fontSize = 12.sp) },
                     singleLine = true,
+                    enabled = isOmega,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     ),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1122,9 +1379,31 @@ fun SettingsViewTab(viewModel: MainViewModel, user: UserEntity) {
 
                 Spacer(modifier = Modifier.height(10.dp))
 
+                if (!isOmega) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF381E1E)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    ) {
+                        Row(modifier = Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Lock, contentDescription = "Locked settings", tint = Color(0xFFE57373), modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "ACCESO RESTRINGIDO: Sólo el rango Omega puede modificar el servidor Supabase.",
+                                color = Color(0xFFFFCDD2),
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+
                 Button(
                     onClick = { viewModel.saveSupabaseConfiguration(customSupaUrl, customSupaKey) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                    enabled = isOmega,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isOmega) MaterialTheme.colorScheme.primary else Color.Gray.copy(alpha = 0.3f)
+                    ),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp)
                 ) {
